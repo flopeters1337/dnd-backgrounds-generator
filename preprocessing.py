@@ -81,7 +81,7 @@ for i in range(0,len(dataset)):
 # end description 
 
 #Save the output it in a file named 'Preprocessing_file'
-outfile = open('Preprocessing_file','wb')
+outfile = open('Preprocessing_file.pkl','wb')
 pickle.dump(output,outfile)
 outfile.close()
 

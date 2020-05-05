@@ -9,10 +9,10 @@ class LSTMGenerator(nn.Module):
     def __init__(self, voc_dim, lstm_dim, embedding_dim, max_len, gpu=False):
         """
         Constructor
-        :param voc_dim:
-        :param lstm_dim:
-        :param embedding_dim:
-        :param gpu: (bool) number of GPUs to use for computation
+        :param voc_dim: (int) vocabulary set's size
+        :param lstm_dim: (int) size of hidden states for the lstm layer
+        :param embedding_dim: (int) dimension of embedding vector
+        :param gpu: (bool) specifies if we are using GPU to compute the neural network
         """
         # Call the superclass' constructor
         super(LSTMGenerator, self).__init__()
@@ -33,7 +33,7 @@ class LSTMGenerator(nn.Module):
         self.dense = nn.Linear(lstm_dim, voc_dim)
 
         # Final softmax layer
-        self.softmax = nn.Softmax(dim=-1)
+        self.softmax = nn.Softmax(dim=-1)  # -1 to infer the correct dimension
 
         self.init_params()
 
@@ -45,21 +45,23 @@ class LSTMGenerator(nn.Module):
         :param require_hidden:
         :return:
         """
+        # Transform the input sequences into sequences of latent vectors
         embedding = self.embedding(input)
-        if len(input.size()) == 1:
+
+        if len(input.size()) == 1:  # Particular case when the sequences contain only one element
             embedding = embedding.unsqueeze(1)
 
         output, hidden = self.lstm(embedding, hidden)
-        output = output.contiguous().view(-1, self.lstm_dim)
+        output = output.contiguous().view(-1, self.lstm_dim)  # Again, -1 to infer the correct dimension
         output = self.dense(output)
         prediction = self.softmax(output)
 
-        if require_hidden:
+        if require_hidden:  # Used when sampling the network
             return prediction, hidden
         else:
             return prediction
 
-    def sample(self, n_samples, batch_size, word_0):
+    def sample(self, n_samples, batch_size, word_0, gen_type='multinom'):
         if n_samples != batch_size:
             n_batches = n_samples // batch_size + 1
         else:
@@ -67,16 +69,26 @@ class LSTMGenerator(nn.Module):
 
         samples = torch.zeros(n_batches * batch_size, self.max_len).long()
 
+        # Produce samples by batches
         for batch in range(n_batches):
             hidden = self.init_hidden(batch_size)
-            input = torch.LongTensor([word_0] * batch_size)
+            input = torch.LongTensor([word_0] * batch_size)  # Initialize every sequence with 'word_0' as starting token
             if self.gpu:
                 input = input.cuda()
 
+            # Iterate the generator until we reach the maximum length allowed for the sequence
             for i in range(self.max_len):
+                # Forward pass where we keep track of the hidden states of the network
                 output, hidden = self.forward(input, hidden, require_hidden=True)
-                next_token = torch.multinomial(output, 1)
-                samples[batch * batch_size:(batch + 1) * batch_size, 1] = next_token.view(-1)
+
+                if gen_type == 'multinom':
+                    # Generate the next token in the sequence randomly using the output as a multinomial distribution
+                    next_token = torch.multinomial(output, 1)
+                elif gen_type == 'argmax':
+                    # Choose the most probable token in the sequence deterministically
+                    next_token = torch.argmax(output, 1)
+
+                samples[batch * batch_size:(batch + 1) * batch_size, i] = next_token.view(-1)
                 input = next_token.view(-1)
 
         samples = samples[:n_samples]
@@ -86,9 +98,11 @@ class LSTMGenerator(nn.Module):
     def init_params(self):
         for param in self.parameters():
             if param.requires_grad:
-                torch.nn.init.normal_(param, mean=0, std=1)
+                # Initialize all parameters using a normal distribution N(0;1)
+                torch.nn.init.normal_(param, mean=0, std=1)  # TODO: maybe change depending on the parameter?
 
     def init_hidden(self, batch_size):
+        # Initialize all hidden states to 0
         h = torch.zeros(1, batch_size, self.lstm_dim)
         c = torch.zeros(1, batch_size, self.lstm_dim)
 

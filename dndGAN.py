@@ -209,25 +209,21 @@ class LSTMGenerator(nn.Module):
             return h, c
 
 
-def discriminator():
-    pass
-
-
 class GANTrainer:
-    def __int__(self, vocab, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=True):
+    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=True):
         self.gpu = gpu
-        self.n_rollout = 16
+        self.n_rollout = n_rollout
         self.G = gen
         self.D = dis
         self.max_len = max_len
         self.batch_size = batch_size
 
         # Build mappings from word to indices and vice-versa
-        self.word2idx = {vocab[i]: i for i in range(len(vocab))}
-        self.idx2word = {v: k for k, v in self.word2idx.items()}
+        #self.word2idx = {vocab[i]: i for i in range(len(vocab))}
+        #self.idx2word = {v: k for k, v in self.word2idx.items()}
 
-        self.optimizerG = torch.optim.adam.Adam(self.G.parameters(), lr=lr)
-        self.optimizerD = torch.optim.adam.Adam(self.D.parameters(), lr=lr)
+        self.optimizerG = torch.optim.Adam(self.G.parameters(), lr=lr)
+        self.optimizerD = torch.optim.Adam(self.D.parameters(), lr=lr)
 
         self.loss_G = []
         self.loss_D = []
@@ -249,14 +245,14 @@ class GANTrainer:
 
             G_loss_tot += adversarial_loss.item()
 
-    def train(self, dataloader, num_epochs):
+    def train(self, real_data, num_epochs):
         for epoch in range(num_epochs):
-            for i, data in enumerate(dataloader, 0):
+            for i, data in enumerate(real_data, 0):
                 ### Step 1 (D network): max log(D(x)) + log(1 - D(G(z))) ###
 
                 ## Real Data ##
                 self.D.zero_grad()
-                real_data = data[0].to(device)
+                real_data = data.to(device)
                 batch_size = real_data.size(0)
                 label = torch.full((batch_size,), real_label, device=device)
 

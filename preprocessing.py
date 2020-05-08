@@ -37,9 +37,9 @@ def remove_punct(text):
     #-removes quotation marks in the text
     #-replaces every number by the sring "_Number_" in the text
     #-replaces  the string name in the text by _Name_
-    #-adds "_end_" at the end of the text
-#The inputs are two strings text and name. 
-def Before_Token(text, name):
+    #-adds "_end_" at the end of the text if the option end is activated 
+#The inputs are two strings text and name and an option end (either 0 or 1)
+def Before_Token(text, name, end):
     text = text.replace("?", ".")
     text = text.replace("!", ".")
     text = text.replace(".", " .")
@@ -52,36 +52,68 @@ def Before_Token(text, name):
         name=remove_punct(name)
         for i in range(0, len(name)):
             text = re.sub(name[i], "_name_", text)  
-    text = text + " _end_"
+    if end==1:
+        text = text + " _end_"
     return text
     
 #Tokenization, words by word, of the string text by keeping the point. 
 #First this function applies the function Before_Token. 
 #The inputs are two strings text and name.
-def Tokenization(text, name):
-   text= Before_Token(text, name)
+def Tokenization_per_backstory(text, name):
+   text= Before_Token(text, name, 1)
    words = text.split()
+   return [word.lower() for word in words]
+
+def Tokenization_per_sentence(text, name):
+   text= Before_Token(text, name,0)
+   words = text.split(".")
    return [word.lower() for word in words]
 
 print("#######################################")
 
 #Tokenization of each backstory. 
-output = [None]*len(dataset)
+output_per_backstory = [None]*len(dataset)
+sentence = [None]*len(dataset)
 
 
-#print(output)
-#for i in range(2430,len(dataset)):
+
+###############################    By backstory #################
 for i in range(0,len(dataset)):
-    print("############ Index :", i)
-    print(dataset.Backstory[i])
-    print(dataset.Name[i])
-    output[i]=Tokenization(dataset.Backstory[i], dataset.Name[i]) 
-    print(output[i])
+#    print("############ Index :", i)
+#    print(dataset.Backstory[i])
+#    print(dataset.Name[i])
+    output_per_backstory [i]=Tokenization_per_backstory(dataset.Backstory[i], dataset.Name[i]) 
+    print(output_per_backstory [i])
  
+###############################    By sentence #################
+for i in range(0,len(dataset)):
+#    print("############ Index :", i)
+#    print(dataset.Backstory[i])
+#    print(dataset.Name[i])
+    sentence[i]=Tokenization_per_sentence(dataset.Backstory[i], dataset.Name[i]) 
+#    print("Sentence i ")
+#    print(sentence[i])
+    for j in range(0, len(sentence[i])):
+        if i==0 and j==0:
+#            print(sentence[i][j].split())
+            output_per_sentence=[sentence[i][j].split()]
+        else: 
+            print(sentence[i][j].split())
+            output_per_sentence = output_per_sentence+ [sentence[i][j].split()]
+#    print("output_per_sentence est ")
+#    print(output_per_sentence)      
+
+        
+        
+        
 # end description 
 
 #Save the output it in a file named 'Preprocessing_file'
-outfile = open('Preprocessing_file.pkl','wb')
-pickle.dump(output,outfile)
-outfile.close()
+outfile_per_backstory = open('Preprocessing_per_backstory_file.pkl','wb')
+pickle.dump(output_per_backstory,outfile_per_backstory)
+outfile_per_backstory.close()
+
+outfile_per_sentence = open('Preprocessing_per_sentence_file.pkl','wb')
+pickle.dump(output_per_sentence,outfile_per_sentence)
+outfile_per_sentence.close()
 

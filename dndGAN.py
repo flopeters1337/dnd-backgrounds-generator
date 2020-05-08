@@ -210,7 +210,7 @@ class LSTMGenerator(nn.Module):
 
 
 class GANTrainer:
-    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=True):
+    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False):
         self.gpu = gpu
         self.n_rollout = n_rollout
         self.G = gen
@@ -233,7 +233,7 @@ class GANTrainer:
         G_loss_tot = 0
 
         for _ in range(n_steps):
-            input, target = prepare_gen_data(self.G.sample(self.batch_size, self.batch_size), max_seq_len=self.max_len,
+            input, target = prepare_gen_data(self.G.sample(self.batch_size, self.batch_size, word_0=0), max_seq_len=self.max_len,
                                              gpu=self.gpu)
             rewards = reward_func.get_reward(target, self.n_rollout, self.D)
             adversarial_loss = self.G.PGLoss(input, target, rewards)
@@ -257,21 +257,22 @@ class GANTrainer:
                 label = torch.full((batch_size,), real_label, device=device)
 
                 # Forward pass
-                output = self.D(real_data).view(-1)
+                output = self.D(real_data)[:, 0].view(-1)
 
                 # Compute loss on real data batch
-                lossD_real = torch.nn.BCELoss(output, label)
+                criterion = torch.nn.BCELoss()
+                lossD_real = criterion(output, label)
 
                 # Backward pass
                 lossD_real.backward()
 
                 ## Fake Data ##
                 # Generate fake sentences using G network
-                fake = self.G.sample()
+                fake = self.G.sample(n_samples=real_data.size(0), batch_size=batch_size, word_0=0)
                 label.fill_(fake_label)
 
-                output = self.D(fake.detach()).view(-1)
-                lossD_fake = torch.nn.BCELoss(output, label)
+                output = self.D(fake.detach())[:, 0].view(-1)
+                lossD_fake = criterion(output, label)
 
                 lossD_fake.backward()
                 lossD = lossD_real + lossD_fake

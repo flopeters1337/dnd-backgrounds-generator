@@ -245,9 +245,9 @@ class GANTrainer:
 
             G_loss_tot += adversarial_loss.item()
 
-    def train(self, real_data, num_epochs):
+    def train(self, train_data, num_epochs):
         for epoch in range(num_epochs):
-            for i, data in enumerate(real_data, 0):
+            for i, data in enumerate(train_data, 0):
                 ### Step 1 (D network): max log(D(x)) + log(1 - D(G(z))) ###
 
                 ## Real Data ##

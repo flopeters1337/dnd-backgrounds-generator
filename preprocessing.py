@@ -6,9 +6,10 @@ import string
 #import nltk
 #from nltk.tokenize import word_tokenize
 import pickle
+import os
 
 #Import dataset 
-dataset = pd.read_excel(r'C:\Users\elodi\dox\Documents\Doctorat\Formation doctorale\Cours suivis\Deep learning\Projet Deep Learning\dnd-backgrounds-generator\Data\dd_bios.xls',encoding='latin1')
+dataset = pd.read_excel(os.path.join('Data', 'dd_bios.xls'), encoding='latin1')
 #print(dataset)
 dataset.columns = ['Time', 'Name', 'Race', 'Class', 'Backstory']
 

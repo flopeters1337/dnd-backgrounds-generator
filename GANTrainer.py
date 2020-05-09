@@ -1,9 +1,12 @@
 import copy
 import torch
-import logging
+import random
+from datetime import datetime, timedelta
 import os
+import pickle as pkl
 
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+# Set random seed to replicate results
+random.seed(133742)
 
 # Enables GPU computing to speed up network training
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -92,7 +95,7 @@ class Rollout:
 
 
 class GANTrainer:
-    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False):
+    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False, backup=False):
         self.gpu = gpu
         self.n_rollout = n_rollout
         self.G = gen
@@ -125,9 +128,10 @@ class GANTrainer:
 
         return G_loss_tot
 
-    def train(self, train_data, num_epochs):
+    def train(self, train_data, num_epochs, backup=True):
         losses_D = []
         losses_G = []
+        start_time = datetime.now()
 
         for epoch in range(num_epochs):
             for i, data in enumerate(train_data, 0):
@@ -168,9 +172,22 @@ class GANTrainer:
                 losses_D.append(lossD.item())
                 losses_G.append(lossG)
 
-                if i % 50 == 0:
-                    logging.info('[{0}/{1}][{2}/{3}]\tDis Loss: {4:.3f}\tGen Loss: {5:.3f}'.format(
-                        epoch+1, num_epochs, i+1, len(train_data), lossD.item(), lossG
-                    ))
+                # ETA calculation
+                elapsed = datetime.now() - start_time
+                batches_completed = (i+1) + epoch * len(train_data)
+                remaining_batches = num_epochs * len(train_data) - batches_completed
+                remaining_sec = elapsed.seconds * (remaining_batches / batches_completed)
+                eta = timedelta(seconds=remaining_sec)
+
+                print('[{0}/{1}][{2}/{3}]\tDis Loss: {4:.3f}\tGen Loss: {5:.3f}\tETA: {6}'.format(
+                    epoch+1, num_epochs, i+1, len(train_data), lossD.item(), lossG, eta
+                ))
+
+                if backup and i % 20 == 0:
+                    current_time = datetime.now()
+                    time_str = current_time.strftime('%Y-%m-%d_%H-%M')
+
+                    with open(os.path.join('Saves', 'GANTrainer_' + time_str + '.pkl'), mode='wb') as fd:
+                        pkl.dump(self, fd)
 
         return losses_G, losses_D

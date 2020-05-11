@@ -95,29 +95,46 @@ class Preprocessor():
         output = torch.transpose(output,0,1)
         return output
         
-    ###################### ELODIE'S FUNCTIONS (tu peux rajouter tes commentaires stp) #####################################    
+    ###################### Pre-processing  #####################################    
     
+    #Tokenization, words by word, of the string text by keeping the point. 
+    #First this function applies the function pre_tokenization. 
     def tokenization_backstory(self, text, name):
         text = self.pre_tokenization(text, name, 1)
         words = text.split()
         return [word.lower() for word in words]
     
+        
+    #Tokenization, sentence by sentence, of the string text
+    #First this function applies the function pre_tokenization. 
     def tokenization_sentences(self, text, name):
         text = self.pre_tokenization(text, name, 0)
         words = text.split('.')
         return [word.lower() for word in words]
 
+
+
+    #Function to apply before the tokenization 
+    #This function 
+    #-replaces interrogation and exclamation points by points in the text
+    #-removes quotation marks in the text
+    #-replaces every number by the sring "_Number_" in the text
+    #-replaces  the string name in the text by "_Name_"
+    #-removes all non alpha-numeric characters except the point
+    #-adds "_end_" at the end of the text if the option end is activated 
+    #The inputs are two strings text and name and an option end (either 0 or 1)
     def pre_tokenization(self, text, name, end):
         text = text.replace("?", ".")
         text = text.replace("!", ".")
         text = text.replace(".", " .")
         text = text.replace("“", "")
         text = text.replace("”", "")
-        text = re.sub("\d+", "_Number_", text)
         text = re.sub(r"[^a-zA-Z0-9\.]+", ' ', text)
-        if name in text: 
-            text = re.sub("(^| )" + name + "( |$)", " _Name_ ", text)
-        else: 
+        text = re.sub("\d+", "_Number_", text)
+        
+        if name in text: #if the string name is in the text
+            text = re.sub("(^| )" + name + "( |$)", " _Name_ ", text)# replace name by _Name_
+        else:  #if not, look if one part of the string is in the text and if yes, replace it by _Name_
             name = self.remove_punctuation(name)
             for i in range(0, len(name)):
                 text = re.sub("(^| )" + name[i] + "( |$)", " _Name_ ", text)
@@ -125,6 +142,9 @@ class Preprocessor():
             text = text + " _end_"
         return text
     
+
+    #Tokenization, words by word, of the string text. All the punctuations, except the hyphen, are removed.
+    #This function will be applied to replace all the occurences of the character name in the backstory. 
     def remove_punctuation(self, text):
         text = text.replace("“", "")
         text = text.replace("”", "")

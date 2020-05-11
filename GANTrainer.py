@@ -1,12 +1,8 @@
 import copy
 import torch
-import random
 from datetime import datetime, timedelta
 import os
 import pickle as pkl
-
-# Set random seed to replicate results
-random.seed(133742)
 
 # Enables GPU computing to speed up network training
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -95,7 +91,7 @@ class Rollout:
 
 
 class GANTrainer:
-    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False, backup=False):
+    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False):
         self.gpu = gpu
         self.n_rollout = n_rollout
         self.G = gen
@@ -128,7 +124,7 @@ class GANTrainer:
 
         return G_loss_tot
 
-    def train(self, train_data, num_epochs, backup=True):
+    def train(self, train_data, num_epochs, backup=False):
         losses_D = []
         losses_G = []
         start_time = datetime.now()
@@ -183,11 +179,19 @@ class GANTrainer:
                     epoch+1, num_epochs, i+1, len(train_data), lossD.item(), lossG, eta
                 ))
 
+                # Create a pickle backup every 20 batches
                 if backup and i % 20 == 0:
                     current_time = datetime.now()
                     time_str = current_time.strftime('%Y-%m-%d_%H-%M')
 
                     with open(os.path.join('Saves', 'GANTrainer_' + time_str + '.pkl'), mode='wb') as fd:
                         pkl.dump(self, fd)
+
+        # Save final model to file
+        current_time = datetime.now()
+        time_str = current_time.strftime('%Y-%m-%d_%H-%M')
+
+        with open(os.path.join('Saves', 'GANTrainer-FINAL_' + time_str + '.pkl'), mode='wb') as fd:
+            pkl.dump(self, fd)
 
         return losses_G, losses_D

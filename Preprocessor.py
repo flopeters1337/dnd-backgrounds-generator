@@ -114,12 +114,13 @@ class Preprocessor():
         text = text.replace("“", "")
         text = text.replace("”", "")
         text = re.sub("\d+", "_Number_", text)
+        text = re.sub(r"[^a-zA-Z0-9\.]+", ' ', text)
         if name in text: 
-            text = re.sub(name, "_Name_", text)
+            text = re.sub("(^| )" + name + "( |$)", " _Name_ ", text)
         else: 
             name = self.remove_punctuation(name)
             for i in range(0, len(name)):
-                text = re.sub(name[i], "_Name_", text)
+                text = re.sub("(^| )" + name[i] + "( |$)", " _Name_ ", text)
         if end == 1:
             text = text + " _end_"
         return text

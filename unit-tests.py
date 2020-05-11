@@ -1,4 +1,5 @@
 import os
+import random
 import pickle as pkl
 import torch
 from torch.utils.data import DataLoader
@@ -17,10 +18,12 @@ BATCH_SIZE = 128
 if GPU:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
+# Set random seed for replicating results
+random.seed(421337)
+
 
 if __name__ == '__main__':
     if DEBUG:
-        #data = [torch.randint(0, 7, size=(10, 8))]
         data = [torch.tensor([[0, 2, 0],
                              [0, 1, 0],
                              [0, 3, 0],
@@ -47,7 +50,7 @@ if __name__ == '__main__':
             with open('cached_data.pkl', mode='rb') as fd:
                 data, preproc = pkl.load(fd)
         else:
-            data, _ = preproc.preprocess() # Only pick sentences
+            data, _ = preproc.preprocess()  # Only pick sentences
             with open('cached_data.pkl', mode='wb') as fd:
                 pkl.dump((data, preproc), fd)
 
@@ -57,8 +60,8 @@ if __name__ == '__main__':
         gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=16, embedding_dim=16, max_len=40, gpu=GPU)
 
         print('Training...')
-        trainer = GANTrainer(gen, dis, max_len=40, batch_size=BATCH_SIZE, n_rollout=4, backup=True, gpu=GPU)
-        lossG, lossD = trainer.train(dataset, 5)
+        trainer = GANTrainer(gen, dis, max_len=40, batch_size=BATCH_SIZE, n_rollout=4, gpu=GPU)
+        lossG, lossD = trainer.train(dataset, 5, backup=True)
 
     with open('losses.pkl', mode='wb') as fd:
         pkl.dump((lossG, lossD), fd)
@@ -67,6 +70,6 @@ if __name__ == '__main__':
     sns.set()
     sns.lineplot(x=range(len(lossG)), y=lossG)
     ax = sns.lineplot(x=range(len(lossD)), y=lossD)
-    ax.set(xlabel='# of epochs', ylabel='Loss')
+    ax.set(xlabel='# of batches', ylabel='Loss')
     ax.legend(['Generator', 'Discriminator'])
     plt.show()

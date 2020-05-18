@@ -99,11 +99,40 @@ class GANTrainer:
         self.max_len = max_len
         self.batch_size = batch_size
 
+        self.optimizerG_pretrain = torch.optim.Adam(self.G.parameters(), lr=lr)
         self.optimizerG = torch.optim.Adam(self.G.parameters(), lr=lr)
         self.optimizerD = torch.optim.Adam(self.D.parameters(), lr=lr)
 
+        self.pretrain_loss_G = []
         self.loss_G = []
         self.loss_D = []
+
+    def pretrain_generator(self, pretrain_data, n_steps, word_0=0):
+        self.pretrain_loss_G = []
+        criterion = torch.nn.NLLLoss()
+
+        for step in range(n_steps):
+            for i, data in enumerate(pretrain_data):
+                input = torch.zeros(data.size()).long()
+                input[:, 0] = word_0
+                input[:, 1:] = data[:, :self.max_len - 1]
+                if self.gpu:
+                    input = input.cuda()
+
+                hidden = self.G.init_hidden(data.size(0))
+                output = self.G.forward(input, hidden)
+                loss = criterion(output, input.view(-1))
+
+                # Optimization step
+                self.optimizerG_pretrain.zero_grad()
+                loss.backward()
+                self.optimizerG_pretrain.step()
+
+                self.pretrain_loss_G.append(loss)
+
+                # Print
+                if i % 20:
+                    print("[{0}/{1}] Pretrain-loss: {2:.3f}".format(step, n_steps, loss))
 
     def train_generator(self, n_steps):
         reward_func = Rollout(self.G, self.gpu)
@@ -125,48 +154,52 @@ class GANTrainer:
         return G_loss_tot
 
     def train(self, train_data, num_epochs, backup=False):
-        losses_D = []
-        losses_G = []
+        self.loss_D = []
+        self.loss_G = []
         start_time = datetime.now()
 
         for epoch in range(num_epochs):
             for i, data in enumerate(train_data, 0):
-                ### Step 1 (D network): max log(D(x)) + log(1 - D(G(z))) ###
 
-                ## Real Data ##
-                self.D.zero_grad()
-                real_data = data.to(device)
-                batch_size = real_data.size(0)
-                label = torch.full((batch_size,), real_label, device=device)
+                if i % 5 == 0:
+                    ### Step 1 (D network): max log(D(x)) + log(1 - D(G(z))) ###
 
-                # Forward pass
-                output = self.D(real_data)[:, 1].view(-1)
+                    ## Real Data ##
+                    self.D.zero_grad()
+                    real_data = data.to(device)
+                    batch_size = real_data.size(0)
+                    label = torch.full((batch_size,), real_label, device=device)
 
-                # Compute loss on real data batch
-                criterion = torch.nn.BCELoss()
-                lossD_real = criterion(output, label)
+                    # Forward pass
+                    output = self.D(real_data)[:, 1].view(-1)
 
-                # Backward pass
-                lossD_real.backward()
+                    # Compute loss on real data batch
+                    criterion = torch.nn.BCELoss()
+                    lossD_real = criterion(output, label)
 
-                ## Fake Data ##
-                # Generate fake sentences using G network
-                fake = self.G.sample(n_samples=real_data.size(0), batch_size=batch_size, word_0=0)
-                label.fill_(fake_label)
+                    # Backward pass
+                    lossD_real.backward()
 
-                output = self.D(fake.detach())[:, 1].view(-1)
-                lossD_fake = criterion(output, label)
+                    ## Fake Data ##
+                    # Generate fake sentences using G network
+                    fake = self.G.sample(n_samples=real_data.size(0), batch_size=batch_size, word_0=0)
+                    label.fill_(fake_label)
 
-                lossD_fake.backward()
-                lossD = lossD_real + lossD_fake
-                self.optimizerD.step()
+                    output = self.D(fake.detach())[:, 1].view(-1)
+                    lossD_fake = criterion(output, label)
+
+                    lossD_fake.backward()
+                    lossD = lossD_real + lossD_fake
+                    self.optimizerD.step()
+
+                    self.loss_D.append(lossD.item())
+
 
                 ### Step 2 (G network): max log(D(G(z)))
                 lossG = self.train_generator(n_steps=1)
 
                 ### Append losses
-                losses_D.append(lossD.item())
-                losses_G.append(lossG)
+                self.loss_G.append(lossG)
 
                 # ETA calculation
                 elapsed = datetime.now() - start_time
@@ -194,4 +227,4 @@ class GANTrainer:
         with open(os.path.join('Saves', 'GANTrainer-FINAL_' + time_str + '.pkl'), mode='wb') as fd:
             pkl.dump(self, fd)
 
-        return losses_G, losses_D
+        return self.loss_G, self.loss_D

@@ -12,14 +12,12 @@ import matplotlib.pyplot as plt
 
 GPU = True
 DEBUG = False
-FORCE_PREPROCESS = False
+FORCE_PREPROCESS = True
 BATCH_SIZE = 128
+SEQ_LEN = 25
 
 if GPU:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-
-# Set random seed for replicating results
-random.seed(421337)
 
 
 if __name__ == '__main__':
@@ -35,10 +33,10 @@ if __name__ == '__main__':
                              [0, 0, 0],
                              [0, 3, 0]])]
 
-        dis = CNNDiscriminator(batch_size=1, max_seq=3, voc_size=8)
-        gen = LSTMGenerator(voc_dim=8, lstm_dim=4, embedding_dim=4, max_len=3)
+        dis = CNNDiscriminator(batch_size=1, max_seq=4, voc_size=8)
+        gen = LSTMGenerator(voc_dim=8, lstm_dim=4, embedding_dim=4, max_len=4, gpu=GPU)
 
-        trainer = GANTrainer(gen, dis, max_len=3, batch_size=1)
+        trainer = GANTrainer(gen, dis, max_len=4, batch_size=1, gpu=GPU)
         lossG, lossD = trainer.train(data, 150)
     else:
         preproc = Preprocessor()
@@ -50,18 +48,19 @@ if __name__ == '__main__':
             with open('cached_data.pkl', mode='rb') as fd:
                 data, preproc = pkl.load(fd)
         else:
-            data, _ = preproc.preprocess()  # Only pick sentences
+            data, _ = preproc.preprocess(max_sentences=SEQ_LEN)  # Only pick sentences
             with open('cached_data.pkl', mode='wb') as fd:
                 pkl.dump((data, preproc), fd)
 
         dataset = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True)
 
-        dis = CNNDiscriminator(batch_size=BATCH_SIZE, max_seq=40, voc_size=len(preproc.vocabulary)+1)
-        gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=16, embedding_dim=16, max_len=40, gpu=GPU)
+        dis = CNNDiscriminator(batch_size=BATCH_SIZE, max_seq=SEQ_LEN, voc_size=len(preproc.vocabulary)+1)
+        gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=16, embedding_dim=16, max_len=SEQ_LEN, gpu=GPU)
 
         print('Training...')
-        trainer = GANTrainer(gen, dis, max_len=40, batch_size=BATCH_SIZE, n_rollout=4, gpu=GPU)
-        lossG, lossD = trainer.train(dataset, 5, backup=True)
+        trainer = GANTrainer(gen, dis, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=4, gpu=GPU)
+        trainer.pretrain_generator(dataset, 25)
+        lossG, lossD = trainer.train(dataset, num_epochs=5, backup=True)
 
     with open('losses.pkl', mode='wb') as fd:
         pkl.dump((lossG, lossD), fd)

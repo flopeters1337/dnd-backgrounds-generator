@@ -1,3 +1,10 @@
+# Regroup tokenization backstory/sentence
+# Remove all the intermediate useless values (make the functions return values and use them as temp features in preprocess
+# Put "load dataset" in the constructor
+# Comment everything nicely
+# Update functions with the correction of ELodie to make sure dictionnary is the same everywhere 
+
+
 
 import pandas as pd
 import re
@@ -12,15 +19,13 @@ class Preprocessor():
         self.dataset = None # panda dataframe : TODO : faire que ce soit le constructeur qui load le dataset (paramètre)
         self.vocabulary = None # dictionnary of strings with integer indexes
         
-        self.sentences_original = None  # list of strings
+        self.sentences_original = None  # list of strings NOT USED FOR NOW 
         self.sentences_tokened = None # list of (list of strings)
         self.sentences_indexed = None # list of (list of integers)
         
-        self.descriptions_original = None # list of strings NOT USED FOR NOW 
+        self.descriptions_original = None # list of strings 
         self.descriptions_tokened = None # list of (list of strings)
         self.descriptions_indexed = None # list of (list of integers)
-        
-        # Delete tous les trucs intermédiaires inutiles et tout simplement les mettre en output des fcts intermédiaires ? 
     
     # Function loading the dataset 
     def load_dataset(self, name):
@@ -31,20 +36,20 @@ class Preprocessor():
         dataset = dataset.reset_index(drop=True)
         self.dataset = dataset
         self.descriptions_original = self.dataset[['Backstory']].values.tolist()
-        self.names = self.dataset[['Name']].values.tolist()
+        self.names = self.dataset[['Name']].values.tolist() #USELESS
     
-    # WIP
-    def preprocess(self, min_sentences=4, max_sentences=25, min_descriptions=20, max_descriptions=1000):
+    # Main function outputing the sentences and the descriptions preprocessed. 
+    def preprocess(self, min_sentences=4, max_sentences=20, min_descriptions=20, max_descriptions=200):
         self.tokenize_dataset()
         
         self.create_vocabulary()
         self.vocabulary_mapping()
         
-        self.sentences_indexed = self.size_filtering(self.sentences_indexed, min_sentences, max_sentences)
-        self.descriptions_indexed = self.size_filtering(self.descriptions_indexed, min_descriptions, max_descriptions)
+        output_sentences = self.size_filtering(self.sentences_indexed, min_sentences, max_sentences)
+        output_descriptions = self.size_filtering(self.descriptions_indexed, min_descriptions, max_descriptions)
         
-        output_sentences = self.tensors_conversion(self.sentences_indexed)
-        output_descriptions = self.tensors_conversion(self.descriptions_indexed)
+        output_sentences = self.tensors_conversion(output_sentences)
+        output_descriptions = self.tensors_conversion(output_descriptions)
         
         return output_sentences, output_descriptions
     
@@ -70,7 +75,7 @@ class Preprocessor():
         vocabulary = {word:list_of_unique_words.index(word) for word in list_of_unique_words}
         self.vocabulary = vocabulary
     
-    # Mapping every word of every description/sentence to it unique index
+    # Mapping every word of every description/sentence to its unique index
     def vocabulary_mapping(self):
         outputs = []
         for d in self.descriptions_tokened:

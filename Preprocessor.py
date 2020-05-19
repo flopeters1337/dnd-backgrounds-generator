@@ -34,7 +34,7 @@ class Preprocessor():
         self.names = self.dataset[['Name']].values.tolist()
     
     # WIP
-    def preprocess(self, min_sentences=4, max_sentences=40, min_descriptions=20, max_descriptions=1000):
+    def preprocess(self, min_sentences=4, max_sentences=25, min_descriptions=20, max_descriptions=1000):
         self.tokenize_dataset()
         
         self.create_vocabulary()
@@ -81,11 +81,21 @@ class Preprocessor():
         for s in self.sentences_tokened:
             outputs.append([self.vocabulary[word] for word in s])
         self.sentences_indexed = outputs
-        
-    # Keep only sentences/descriptions of a given length to optimize training
+    
+    # Remove sentences that are too short (and probably noisy) and split too long sentences
     def size_filtering(self, list_of_list, size_min, size_max):
-        list_of_list = [l for l in list_of_list if size_min <= len(l) <= size_max]
-        return list_of_list
+        output = [l for l in list_of_list if size_min <= len(l) <= size_max]
+        list_size_too_long = [l for l in list_of_list if len(l) > size_max]
+        output_splitted = [self.split_list(l,(len(l)//size_max)+1) for l in list_size_too_long]
+        output_splitted = [item for elem in output_splitted for item in elem]
+        output.extend(output_splitted)
+        return output
+
+    # Split too long lists into two or more shorter lists
+    def split_list(self, input_list, n_breaks):
+        length = len(input_list)
+        splitted_list = [input_list[i*length//n_breaks:(i+1)*length//n_breaks] for i in range(n_breaks)]
+        return splitted_list
     
     # Return a tensor with all the descriptions/sentences padded so that it has the same length
     # TODO : return a dataset object instead of a tensor 
@@ -103,7 +113,6 @@ class Preprocessor():
         text = self.pre_tokenization(text, name, 1)
         words = text.split()
         return [word.lower() for word in words]
-    
         
     #Tokenization, sentence by sentence, of the string text
     #First this function applies the function pre_tokenization. 
@@ -111,8 +120,6 @@ class Preprocessor():
         text = self.pre_tokenization(text, name, 0)
         words = text.split('.')
         return [word.lower() for word in words]
-
-
 
     #Function to apply before the tokenization 
     #This function 

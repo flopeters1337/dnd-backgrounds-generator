@@ -15,6 +15,7 @@ DEBUG = False
 FORCE_PREPROCESS = True
 BATCH_SIZE = 128
 SEQ_LEN = 25
+EMBED_DIM = 32
 
 if GPU:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -54,13 +55,15 @@ if __name__ == '__main__':
 
         dataset = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True)
 
-        dis = CNNDiscriminator(batch_size=BATCH_SIZE, max_seq=SEQ_LEN, voc_size=len(preproc.vocabulary)+1)
-        gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=16, embedding_dim=16, max_len=SEQ_LEN, gpu=GPU)
+        dis = CNNDiscriminator(window_sizes=[3, 4, 5], embedding_dim=EMBED_DIM, batch_size=BATCH_SIZE, max_seq=SEQ_LEN,
+                               voc_size=len(preproc.vocabulary)+1)
+        gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=500, embedding_dim=EMBED_DIM,
+                            max_len=SEQ_LEN, gpu=GPU)
 
         print('Training...')
-        trainer = GANTrainer(gen, dis, preproc, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=4, gpu=GPU)
+        trainer = GANTrainer(gen, dis, preproc, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=4, lr=0.00005, gpu=GPU)
         trainer.pretrain_generator(dataset, 25)
-        lossG, lossD = trainer.train(dataset, num_epochs=70, backup=True)
+        lossG, lossD = trainer.train(dataset, num_epochs=20, backup=True)
 
     with open('losses.pkl', mode='wb') as fd:
         pkl.dump((lossG, lossD), fd)

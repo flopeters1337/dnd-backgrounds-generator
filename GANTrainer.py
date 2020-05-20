@@ -214,7 +214,7 @@ class GANTrainer:
                 ))
 
                 # Create a pickle backup every 20 batches
-                if backup and i % 20 == 0:
+                if backup and i % 50 == 0:
                     current_time = datetime.now()
                     time_str = current_time.strftime('%Y-%m-%d_%H-%M')
 

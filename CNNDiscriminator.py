@@ -31,7 +31,7 @@ class CNNDiscriminator(nn.Module):
         
         # Convolutional layers with multiples filters with different sizes
         self.conv_layers = nn.ModuleList([
-            nn.Conv2d(in_channels=1, out_channels=f, kernel_size=(h,10), stride=1, padding=0) 
+            nn.Conv2d(in_channels=1, out_channels=f, kernel_size=(h, embedding_dim), stride=1, padding=0)
             for h,f in zip(window_sizes, n_filters)
         ])
         

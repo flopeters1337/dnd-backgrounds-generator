@@ -58,9 +58,9 @@ if __name__ == '__main__':
         gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=16, embedding_dim=16, max_len=SEQ_LEN, gpu=GPU)
 
         print('Training...')
-        trainer = GANTrainer(gen, dis, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=4, gpu=GPU)
+        trainer = GANTrainer(gen, dis, preproc, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=4, gpu=GPU)
         trainer.pretrain_generator(dataset, 25)
-        lossG, lossD = trainer.train(dataset, num_epochs=5, backup=True)
+        lossG, lossD = trainer.train(dataset, num_epochs=70, backup=True)
 
     with open('losses.pkl', mode='wb') as fd:
         pkl.dump((lossG, lossD), fd)

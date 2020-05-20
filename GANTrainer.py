@@ -91,11 +91,12 @@ class Rollout:
 
 
 class GANTrainer:
-    def __init__(self, gen, dis, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False):
+    def __init__(self, gen, dis, preproc, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False):
         self.gpu = gpu
         self.n_rollout = n_rollout
         self.G = gen
         self.D = dis
+        self.preproc = preproc
         self.max_len = max_len
         self.batch_size = batch_size
 

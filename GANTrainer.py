@@ -11,7 +11,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 real_label = 0.9
 fake_label = 0.1
 
-### Source: qsdf ###
+### The following Rollout class has been borrowed from:                         ###
+### https://github.com/williamSYSU/TextGAN-PyTorch/blob/master/utils/rollout.py ###
 class Rollout:
     def __init__(self, gen, gpu=False):
         """
@@ -84,8 +85,8 @@ class Rollout:
 
         rewards = torch.mean(rewards.view(batch_size, self.max_seq_len, rollout_num), dim=-1)
         return rewards
+### END ###
 
-### Source ###
 
 class GANTrainer:
     def __init__(self, gen, dis, preproc, max_len=64, batch_size=16, lr=0.0002, n_rollout=16, gpu=False):

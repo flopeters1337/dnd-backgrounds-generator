@@ -1,5 +1,4 @@
 import os
-import random
 import pickle as pkl
 import torch
 from torch.utils.data import DataLoader
@@ -22,6 +21,8 @@ if GPU:
 
 
 if __name__ == '__main__':
+
+    # Toy examples for debugging
     if DEBUG:
         data = [torch.tensor([[0, 2, 0],
                              [0, 1, 0],
@@ -50,6 +51,8 @@ if __name__ == '__main__':
                 data, preproc = pkl.load(fd)
         else:
             data, _ = preproc.preprocess(max_sentences=SEQ_LEN)  # Only pick sentences
+
+            # Save data and preprocessor to not perform a useless preprocessing step
             with open('cached_data.pkl', mode='wb') as fd:
                 pkl.dump((data, preproc), fd)
 
@@ -61,14 +64,14 @@ if __name__ == '__main__':
                             max_len=SEQ_LEN, gpu=GPU)
 
         print('Training...')
-        trainer = GANTrainer(gen, dis, preproc, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=4, lr=0.00005, gpu=GPU)
-        trainer.pretrain_generator(dataset, 25)
-        lossG, lossD = trainer.train(dataset, num_epochs=20, backup=True)
+        trainer = GANTrainer(gen, dis, preproc, max_len=SEQ_LEN, batch_size=BATCH_SIZE, n_rollout=15, lr=0.005, gpu=GPU)
+        trainer.pretrain_generator(dataset, 5)
+        lossG, lossD = trainer.train(dataset, num_epochs=10, backup=True)
 
     with open('losses.pkl', mode='wb') as fd:
         pkl.dump((lossG, lossD), fd)
 
-    # Create graph
+    # Plot losses
     sns.set()
     sns.lineplot(x=range(len(lossG)), y=lossG)
     ax = sns.lineplot(x=range(len(lossD)), y=lossD)

@@ -60,7 +60,7 @@ class Preprocessor():
         for i in range(0, len(self.dataset)):
             descriptions_output.append(self.tokenization_backstory(self.dataset['Backstory'][i], self.dataset['Name'][i]))
             sentence_temp = self.tokenization_sentences(self.dataset['Backstory'][i], self.dataset['Name'][i])
-            sentence_temp = [l.split() for l in sentence_temp] # Si on veut sentences original c'est ici
+            sentence_temp = [l.split() for l in sentence_temp]  # Si on veut sentences original c'est ici
             sentences_output.append(sentence_temp)
             
         self.descriptions_tokened = descriptions_output

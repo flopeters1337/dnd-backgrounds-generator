@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import one_hot
-import copy
 
 
 class LSTMGenerator(nn.Module):
@@ -11,6 +10,7 @@ class LSTMGenerator(nn.Module):
         :param voc_dim: (int) vocabulary set's size
         :param lstm_dim: (int) size of hidden states for the lstm layer
         :param embedding_dim: (int) dimension of embedding vector
+        :param max_len: (int) length of generated sequences
         :param gpu: (bool) specifies if we are using GPU to compute the neural network
         """
         # Call the superclass' constructor
@@ -39,11 +39,13 @@ class LSTMGenerator(nn.Module):
 
     def forward(self, input, hidden, require_hidden=False):
         """
-
-        :param input:
-        :param hidden:
-        :param require_hidden:
-        :return:
+        Forward pass of the network
+        :param input: (tensor of size batch_size * max_len) Input sequences
+        :param hidden: (tensor of size embedding_dim * lstm_dim) Current hidden states for the LSTM layer
+        :param require_hidden: (bool) specifies if the method should return the hidden states or not
+        :return: either a single tensor of size batch_size * max_len, 'prediction' which is the result of a forward pass
+            of the input through the network; or the aforementioned tensor alongside a tensor of size
+            embedding_dim * lstm_dim which correspond to the new hidden states of the LSTM layer after the forward pass
         """
         # Transform the input sequences into sequences of latent vectors
         embedding = self.embedding(input)
@@ -52,7 +54,7 @@ class LSTMGenerator(nn.Module):
             embedding = embedding.unsqueeze(1)
 
         output, hidden = self.lstm(embedding, hidden)
-        output = output.contiguous().view(-1, self.lstm_dim)  # Again, -1 to infer the correct dimension
+        output = output.contiguous().view(-1, self.lstm_dim)  # -1 to infer the correct dimension
         output = self.dense(output)
         prediction = self.softmax(output)
 
@@ -61,7 +63,18 @@ class LSTMGenerator(nn.Module):
         else:
             return prediction
 
-    def sample(self, n_samples, batch_size, word_0, gen_type='multinom'):
+    def sample(self, n_samples, batch_size, word_0=-1, gen_type='multinom'):
+        """
+        Sample the network to generate sequences
+        :param n_samples: (int) number of sequences to generate
+        :param batch_size: (int) size of batches for generation
+        :param word_0: (int) index of the word to bootstrap sequence generation. If it is <0, then select a random word
+            from the vocabulary.
+        :param gen_type: (string) type of generation method to use (either 'multinom' for multinomial sampling or
+            'argmax' for maximum likelihood sampling)
+        :return: a tensor of size n_samples * max_len which are sequences of indices sampled from the network
+        """
+        # Compute the number of batches
         if n_samples != batch_size:
             n_batches = n_samples // batch_size + 1
         else:
@@ -72,7 +85,12 @@ class LSTMGenerator(nn.Module):
         # Produce samples by batches
         for batch in range(n_batches):
             hidden = self.init_hidden(batch_size)
-            input = torch.LongTensor([word_0] * batch_size)  # Initialize every sequence with 'word_0' as starting token
+            if word_0 < 0:
+                # Initialize every sequence with a random word from the vocabulary
+                input = torch.randint(low=0, high=self.voc_dim, size=(batch_size,))
+            else:
+                # Initialize every sequence with 'word_0' as starting token
+                input = torch.LongTensor([word_0] * batch_size)
             if self.gpu:
                 input = input.cuda()
 
@@ -88,14 +106,26 @@ class LSTMGenerator(nn.Module):
                     # Choose the most probable token in the sequence deterministically
                     next_token = torch.argmax(torch.exp(output), 1)
 
+                # Append generated ith tokens to batch #'batch'
                 samples[batch * batch_size:(batch + 1) * batch_size, i] = next_token.view(-1)
+
+                # Add generated tokens to the input
                 input = next_token.view(-1)
 
+        # We need this because the number of samples might not be divisible by the size of batches
         samples = samples[:n_samples]
 
         return samples
 
     def PGLoss(self, input, target, reward):
+        """
+        Compute a pseudo-gradient loss
+        :param input: (tensor of size batch_size * max_len) a batch of input sequences
+        :param target: (tensor of size batch_size * max_len) a batch of target sequences that the network should learn
+            to reproduce
+        :param reward: (tensor of size batch_size * 1) list of rewards associated to each input sequence
+        :return: loss object to perform an optimization step
+        """
         # NOTE: PG = Pseudo-Gradient
         batch_size, max_len = input.size()
         hidden = self.init_hidden(batch_size)
@@ -111,7 +141,7 @@ class LSTMGenerator(nn.Module):
         for param in self.parameters():
             if param.requires_grad:
                 # Initialize all parameters using a normal distribution N(0;1)
-                torch.nn.init.normal_(param, mean=0, std=1)  # TODO: maybe change depending on the parameter?
+                torch.nn.init.normal_(param, mean=0, std=1)
 
     def init_hidden(self, batch_size):
         # Initialize all hidden states to 0

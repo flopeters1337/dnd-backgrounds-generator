@@ -35,10 +35,10 @@ if __name__ == '__main__':
                              [0, 0, 0],
                              [0, 3, 0]])]
 
-        dis = CNNDiscriminator(batch_size=1, max_seq=4, voc_size=8)
+        dis = CNNDiscriminator(voc_size=8, window_sizes=[1,2,3])
         gen = LSTMGenerator(voc_dim=8, lstm_dim=4, embedding_dim=4, max_len=4, gpu=GPU)
 
-        trainer = GANTrainer(gen, dis, max_len=4, batch_size=1, gpu=GPU)
+        trainer = GANTrainer(gen, dis, None, max_len=4, batch_size=1, gpu=GPU)
         lossG, lossD = trainer.train(data, 150)
     else:
         preproc = Preprocessor()
@@ -58,8 +58,7 @@ if __name__ == '__main__':
 
         dataset = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True)
 
-        dis = CNNDiscriminator(window_sizes=[3, 4, 5], embedding_dim=EMBED_DIM, batch_size=BATCH_SIZE, max_seq=SEQ_LEN,
-                               voc_size=len(preproc.vocabulary)+1)
+        dis = CNNDiscriminator(window_sizes=[3, 4, 5], embedding_dim=EMBED_DIM, voc_size=len(preproc.vocabulary)+1)
         gen = LSTMGenerator(voc_dim=len(preproc.vocabulary)+1, lstm_dim=500, embedding_dim=EMBED_DIM,
                             max_len=SEQ_LEN, gpu=GPU)
 
